@@ -642,10 +642,9 @@ if user_query:
         answer = generate_answer(
             user_query=user_query,
             conversation_context=conversation_context,
-            query_payload=query_payload,
+            query_payload={**query_payload, "_response_language": language},
             retrieved_passages=retrieved_passages,
             concept_notes=concept_notes,
-            response_language=language,
         )
         status.update(label=copy["complete"], state="complete")
 

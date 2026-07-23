@@ -111,9 +111,14 @@ def generate_answer(
     query_payload: dict[str, Any],
     retrieved_passages: str,
     concept_notes: str,
-    response_language: str = "ko",
 ) -> str:
     model = os.getenv("MARCUS_ANSWER_MODEL", DEFAULT_ANSWER_MODEL)
+    response_language = str(query_payload.get("_response_language", "ko"))
+    prompt_query_payload = {
+        key: value
+        for key, value in query_payload.items()
+        if key != "_response_language"
+    }
     if response_language == "en":
         prompt_name = "answer_system_prompt_en.md"
         language_instructions = """The answer must be in English.
@@ -137,7 +142,9 @@ Use only sources shown in RETRIEVED MEDITATIONS PASSAGES."""
             "system_prompt": load_prompt(prompt_name),
             "user_query": user_query,
             "conversation_context": conversation_context or "(none)",
-            "query_payload": json.dumps(query_payload, ensure_ascii=False, indent=2),
+            "query_payload": json.dumps(
+                prompt_query_payload, ensure_ascii=False, indent=2
+            ),
             "retrieved_passages": retrieved_passages,
             "concept_notes": concept_notes,
             "language_instructions": language_instructions,
