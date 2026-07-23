@@ -16,6 +16,45 @@ from src.meditations_rag.retriever import (
 
 st.set_page_config(page_title="Marcus Aurelius", page_icon="M", layout="wide")
 
+COPY = {
+    "ko": {
+        "language": "언어",
+        "settings": "설정",
+        "search_log": "검색 로그",
+        "study_state": "밤의 서재",
+        "you": "당신",
+        "score": "점수",
+        "missing_key": "서버에 OPENAI_API_KEY가 설정되어 있지 않아 대화할 수 없습니다.",
+        "empty": (
+            "마음에 가장 오래 머문 생각 하나를 가져오라.<br>"
+            "우리는 그것을 사건과 판단과 행동으로 조용히 나누어 볼 것이다."
+        ),
+        "chat_input": "지금 마음에 걸리는 것을 적어보세요",
+        "finding": "관련 구절을 찾고 있습니다...",
+        "answering": "답변을 고르고 있습니다...",
+        "complete": "완료",
+        "rewrite_payload": "검색어 재작성 정보",
+    },
+    "en": {
+        "language": "Language",
+        "settings": "Settings",
+        "search_log": "Search log",
+        "study_state": "night study",
+        "you": "You",
+        "score": "score",
+        "missing_key": "The server is missing OPENAI_API_KEY, so chat is unavailable.",
+        "empty": (
+            "Bring the thought that has stayed with you the longest.<br>"
+            "We will quietly separate it into event, judgment, and action."
+        ),
+        "chat_input": "Write what is weighing on your mind",
+        "finding": "Finding relevant passages...",
+        "answering": "Choosing a response...",
+        "complete": "Complete",
+        "rewrite_payload": "Rewrite payload",
+    },
+}
+
 
 @st.cache_resource(show_spinner=False)
 def get_retriever() -> HybridRetriever:
@@ -458,12 +497,12 @@ def apply_theme() -> None:
     )
 
 
-def render_header() -> None:
+def render_header(study_state: str) -> None:
     st.markdown(
-        """
+        f"""
         <div class="study-header">
           <div class="study-name">Marcus Aurelius</div>
-          <div class="study-state">night study</div>
+          <div class="study-state">{html.escape(study_state)}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -480,16 +519,20 @@ def format_message_content(content: str) -> str:
         if not block:
             continue
         block = block.replace("\n", "<br>")
-        css_class = "sources" if block.startswith("관련 구절") else ""
+        css_class = (
+            "sources"
+            if block.startswith(("관련 구절", "Related Passages"))
+            else ""
+        )
         rendered.append(f'<p class="{css_class}">{block}</p>')
     return "".join(rendered)
 
 
-def render_message(role: str, content: str) -> None:
+def render_message(role: str, content: str, *, user_label: str) -> None:
     is_assistant = role == "assistant"
     row_class = "assistant" if is_assistant else "user"
     bubble_class = "assistant-bubble" if is_assistant else "user-bubble"
-    speaker = "Marcus" if is_assistant else "You"
+    speaker = "Marcus" if is_assistant else user_label
     st.markdown(
         f"""
         <div class="chat-row {row_class}">
@@ -503,9 +546,11 @@ def render_message(role: str, content: str) -> None:
     )
 
 
-def render_result(result, index: int) -> None:
+def render_result(result, index: int, *, score_label: str) -> None:
     chunk = result.chunk
-    with st.expander(f"{index}. {chunk['source']} · score {result.hybrid_score:.3f}"):
+    with st.expander(
+        f"{index}. {chunk['source']} · {score_label} {result.hybrid_score:.3f}"
+    ):
         st.caption(
             f"id={chunk['id']} | vector={result.vector_score:.3f} | bm25={result.bm25_score:.3f}"
         )
@@ -528,37 +573,38 @@ def format_conversation_context(messages: list[dict[str, object]], *, limit: int
 
 sync_openai_key_from_secrets()
 apply_theme()
-render_header()
 
 with st.sidebar:
-    st.subheader("설정")
-    show_debug = st.toggle("검색 로그", value=False)
-    api_key_input = st.text_input(
-        "OpenAI API key",
-        type="password",
-        placeholder="sk-...",
-        help="환경 변수 OPENAI_API_KEY가 없을 때만 입력하세요. 이 로컬 세션에만 사용됩니다.",
+    language_choice = st.radio(
+        "Language / 언어",
+        ("한국어", "English"),
+        horizontal=True,
+        label_visibility="collapsed",
     )
-    if api_key_input:
-        os.environ["OPENAI_API_KEY"] = api_key_input
+    language = "ko" if language_choice == "한국어" else "en"
+    copy = COPY[language]
+    st.subheader(copy["settings"])
+    show_debug = st.toggle(copy["search_log"], value=False)
     st.divider()
     st.caption("rewrite · gpt-5.5")
     st.caption("answer · gpt-5.5")
     st.caption("embedding · text-embedding-3-large")
     st.caption("retrieval · hybrid top-5")
 
-if not os.getenv("OPENAI_API_KEY"):
-    st.warning("OPENAI_API_KEY가 설정되어 있어야 대화할 수 있습니다.")
+render_header(copy["study_state"])
+
+api_ready = bool(os.getenv("OPENAI_API_KEY"))
+if not api_ready:
+    st.warning(copy["missing_key"])
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if not st.session_state.messages:
     st.markdown(
-        """
+        f"""
         <div class="empty-study">
-          마음에 가장 오래 머문 생각 하나를 가져오라.
-          우리는 그것을 사건과 판단과 행동으로 조용히 나누어 볼 것이다.
+          {copy["empty"]}
         </div>
         """,
         unsafe_allow_html=True,
@@ -566,23 +612,23 @@ if not st.session_state.messages:
 
 st.markdown('<div class="chat-flow">', unsafe_allow_html=True)
 for message in st.session_state.messages:
-    render_message(message["role"], message["content"])
+    render_message(message["role"], message["content"], user_label=copy["you"])
     if message["role"] == "assistant" and show_debug and message.get("results"):
         for idx, result in enumerate(message["results"], start=1):
-            render_result(result, idx)
+            render_result(result, idx, score_label=copy["score"])
         if message.get("query_payload"):
-            with st.expander("Rewrite payload"):
+            with st.expander(copy["rewrite_payload"]):
                 st.json(message["query_payload"])
 st.markdown("</div>", unsafe_allow_html=True)
 
-user_query = st.chat_input("지금 마음에 걸리는 것을 적어보세요")
+user_query = st.chat_input(copy["chat_input"], disabled=not api_ready)
 
 if user_query:
     conversation_context = format_conversation_context(st.session_state.messages)
     st.session_state.messages.append({"role": "user", "content": user_query})
-    render_message("user", user_query)
+    render_message("user", user_query, user_label=copy["you"])
 
-    with st.status("관련 구절을 찾고 있습니다...", expanded=False) as status:
+    with st.status(copy["finding"], expanded=False) as status:
         query_payload = rewrite_query(user_query, conversation_context=conversation_context)
         retriever = get_retriever()
         results = retriever.retrieve(
@@ -592,21 +638,22 @@ if user_query:
         )
         retrieved_passages = format_results_for_prompt(results)
         concept_notes = select_concept_notes(query_payload, max_cards=3)
-        status.update(label="답변을 고르고 있습니다...", state="running")
+        status.update(label=copy["answering"], state="running")
         answer = generate_answer(
             user_query=user_query,
             conversation_context=conversation_context,
             query_payload=query_payload,
             retrieved_passages=retrieved_passages,
             concept_notes=concept_notes,
+            response_language=language,
         )
-        status.update(label="완료", state="complete")
+        status.update(label=copy["complete"], state="complete")
 
-    render_message("assistant", answer)
+    render_message("assistant", answer, user_label=copy["you"])
     if show_debug:
         for idx, result in enumerate(results, start=1):
-            render_result(result, idx)
-        with st.expander("Rewrite payload"):
+            render_result(result, idx, score_label=copy["score"])
+        with st.expander(copy["rewrite_payload"]):
             st.json(query_payload)
 
     st.session_state.messages.append(

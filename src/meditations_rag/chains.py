@@ -39,7 +39,7 @@ LATEST USER MESSAGE:
 
 ANSWER_PROMPT = ChatPromptTemplate.from_messages(
     [
-        ("system", load_prompt("answer_system_prompt.md")),
+        ("system", "{system_prompt}"),
         (
             "human",
             """USER QUESTION:
@@ -61,12 +61,7 @@ TASK:
 Answer as a Marcus-like conversation partner, not as a lecturer.
 Continue naturally from RECENT CONVERSATION when it is relevant.
 Keep the answer grounded in the retrieved Meditations.
-The answer must be in Korean.
-Use the required section structure: 사건, 판단, 행동, 로마 황제의 한 마디, 관련 구절.
-Under "로마 황제의 한 마디", write exactly one short warm conversational sentence that summarizes the answer.
-Mention 1-2 relevant Meditations passages at the end under "관련 구절".
-Each cited passage must include a one-line Korean translated quote.
-Use only sources shown in RETRIEVED MEDITATIONS PASSAGES.
+{language_instructions}
 """,
         ),
     ]
@@ -116,15 +111,35 @@ def generate_answer(
     query_payload: dict[str, Any],
     retrieved_passages: str,
     concept_notes: str,
+    response_language: str = "ko",
 ) -> str:
     model = os.getenv("MARCUS_ANSWER_MODEL", DEFAULT_ANSWER_MODEL)
+    if response_language == "en":
+        prompt_name = "answer_system_prompt_en.md"
+        language_instructions = """The answer must be in English.
+Use the required section structure: Event, Judgment, Action, A Word from the Roman Emperor, Related Passages.
+Under "A Word from the Roman Emperor", write exactly one short, warm conversational sentence that summarizes the answer.
+Mention 1-2 relevant Meditations passages at the end under "Related Passages".
+Each cited passage must include a one-line English quote from the retrieved text.
+Use only sources shown in RETRIEVED MEDITATIONS PASSAGES."""
+    else:
+        prompt_name = "answer_system_prompt.md"
+        language_instructions = """The answer must be in Korean.
+Use the required section structure: 사건, 판단, 행동, 로마 황제의 한 마디, 관련 구절.
+Under "로마 황제의 한 마디", write exactly one short warm conversational sentence that summarizes the answer.
+Mention 1-2 relevant Meditations passages at the end under "관련 구절".
+Each cited passage must include a one-line Korean translated quote.
+Use only sources shown in RETRIEVED MEDITATIONS PASSAGES."""
+
     chain = ANSWER_PROMPT | make_llm(model, reasoning_effort="medium") | StrOutputParser()
     return chain.invoke(
         {
+            "system_prompt": load_prompt(prompt_name),
             "user_query": user_query,
             "conversation_context": conversation_context or "(none)",
             "query_payload": json.dumps(query_payload, ensure_ascii=False, indent=2),
             "retrieved_passages": retrieved_passages,
             "concept_notes": concept_notes,
+            "language_instructions": language_instructions,
         }
     )
