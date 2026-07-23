@@ -12,6 +12,7 @@ from langchain_openai import ChatOpenAI
 
 DEFAULT_REWRITE_MODEL = "gpt-5.5"
 DEFAULT_ANSWER_MODEL = "gpt-5.5"
+APP_PROMPT_VERSION = 1
 
 ROOT = Path(__file__).resolve().parents[2]
 PROMPTS_DIR = ROOT / "prompts"

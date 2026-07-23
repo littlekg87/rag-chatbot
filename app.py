@@ -1,17 +1,24 @@
 from __future__ import annotations
 
 import html
+import importlib
 import os
 import re
 
 import streamlit as st
 
-from src.meditations_rag.chains import generate_answer, rewrite_query
+from src.meditations_rag import chains as chains_module
 from src.meditations_rag.retriever import (
     HybridRetriever,
     format_results_for_prompt,
     select_concept_notes,
 )
+
+if getattr(chains_module, "APP_PROMPT_VERSION", 0) < 1:
+    chains_module = importlib.reload(chains_module)
+
+generate_answer = chains_module.generate_answer
+rewrite_query = chains_module.rewrite_query
 
 
 st.set_page_config(page_title="Marcus Aurelius", page_icon="M", layout="wide")
