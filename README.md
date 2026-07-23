@@ -2,8 +2,7 @@
 
 ## 🏛️ 지금, 마르쿠스 아우렐리우스와 이야기해 보세요
 
-마음에 걸리는 일을 적으면 《명상록》에서 관련 구절을 찾아  
-사건·판단·행동으로 차분하게 나누어 답해 주는 RAG 챗봇입니다.
+마음에 걸리는 일을 적으면 《명상록》에서 관련 구절을 찾아 사건·판단·행동으로 차분하게 나누어 답해 주는 RAG 챗봇입니다.
 
 ### [👉 명상록 챗봇과 대화하러 가기](https://rag-chatbot-km9hgveen2rfuexsp777cf.streamlit.app/)
 
@@ -58,4 +57,3 @@ OpenAI API 키는 저장소에 포함하지 않으며 Streamlit Secrets를 통�
 | `src/meditations_rag/retriever.py` | 벡터 검색과 BM25를 결합한 하이브리드 검색기 |
 | `src/meditations_rag/chains.py` | 질문 재작성 및 한·영 답변 생성 체인 |
 | `text/Marcus-Aurelius-Meditations.pdf` | 코퍼스 구축에 사용한 《명상록》 원문 PDF |
-
