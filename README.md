@@ -1,5 +1,7 @@
 # Marcus Aurelius RAG Chatbot
 
+[한국어](./README.md) | [English](./README.en.md)
+
 ## 🏛️ 지금, 마르쿠스 아우렐리우스와 이야기해 보세요
 
 마음에 걸리는 일을 적으면 《명상록》에서 관련 구절을 찾아 사건·판단·행동으로 차분하게 나누어 답해 주는 RAG 챗봇입니다.
